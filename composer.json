@@ -1,0 +1,23 @@
+{
+    "name": "lvjunior-ueap/google-drive-uploader",
+    "type": "library",
+    "description": "Bibliotecas para upload de arquivos para uma pasta do Google Drive",
+    "keywords": [
+        "php",
+        "google-drive"
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "google/apiclient": "^2.18"
+    },
+    
+    "extra": {
+                "google/apiclient-services": [
+            "Drive",
+            "YouTube"
+        ]
+    },
+    
+    "minimum-stability": "dev"
+}
