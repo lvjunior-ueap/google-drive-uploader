@@ -1,23 +1,27 @@
 {
     "name": "lvjunior-ueap/google-drive-uploader",
+    "description": "Biblioteca PHP genérica para upload, listagem e gerenciamento de arquivos no Google Drive.",
     "type": "library",
-    "description": "Bibliotecas para upload de arquivos para uma pasta do Google Drive",
-    "keywords": [
-        "php",
-        "google-drive"
-    ],
     "license": "MIT",
+    "authors": [
+      {
+        "name": "Luiz V. Junior",
+        "email": "seu-email@exemplo.com"
+      }
+    ],
     "require": {
-        "php": "^8.2",
-        "google/apiclient": "^2.18"
+      "php": "^8.2",
+      "google/apiclient": "^2.18"
     },
-    
-    "extra": {
-                "google/apiclient-services": [
-            "Drive",
-            "YouTube"
-        ]
+    "autoload": {
+      "psr-4": {
+        "LvjuniorUeap\\GoogleDriveUploader\\": "src/"
+      }
     },
-    
-    "minimum-stability": "dev"
-}
+    "autoload-dev": {
+      "psr-4": {
+        "LvjuniorUeap\\GoogleDriveUploader\\Tests\\": "tests/"
+      }
+    },
+    "minimum-stability": "stable"
+  }

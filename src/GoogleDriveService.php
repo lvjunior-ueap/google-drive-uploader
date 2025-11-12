@@ -1,22 +1,24 @@
 <?php
 
-namespace App\Services;
+namespace LvjuniorUeap\GoogleDriveUploader;
 
 use Google\Client as GoogleClient;
 use Google\Service\Drive as GoogleDrive;
 use Google\Service\Drive\DriveFile;
-use Illuminate\Http\File;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Log;
+use Exception;
 
 class GoogleDriveService
 {
-    public GoogleDrive $drive;
+    private GoogleDrive $drive;
 
-    public function __construct()
+    public function __construct(string $credentialsPath)
     {
+        if (!file_exists($credentialsPath)) {
+            throw new Exception("Arquivo de credenciais não encontrado: {$credentialsPath}");
+        }
+
         $client = new GoogleClient();
-        $client->setAuthConfig(storage_path('app/google/credentials2.json'));
+        $client->setAuthConfig($credentialsPath);
         $client->addScope(GoogleDrive::DRIVE);
         $client->addScope(GoogleDrive::DRIVE_FILE);
         $client->addScope(GoogleDrive::DRIVE_APPDATA);
@@ -24,15 +26,19 @@ class GoogleDriveService
         $this->drive = new GoogleDrive($client);
     }
 
-    public function upload(File|UploadedFile $file, string $folderId): DriveFile
+    public function upload(string $filePath, string $folderId): DriveFile
     {
+        if (!file_exists($filePath)) {
+            throw new Exception("Arquivo não encontrado: {$filePath}");
+        }
+
         $fileMetadata = new DriveFile([
-            'name' => $file->getFilename(),
+            'name' => basename($filePath),
             'parents' => [$folderId],
         ]);
 
-        $content = file_get_contents($file->getRealPath());
-        $mimeType = mime_content_type($file->getRealPath());
+        $content = file_get_contents($filePath);
+        $mimeType = mime_content_type($filePath);
 
         return $this->drive->files->create($fileMetadata, [
             'data' => $content,
@@ -55,23 +61,16 @@ class GoogleDriveService
         return $response->files;
     }
 
-
     public function deleteFile(string $fileId): bool
     {
         try {
-            $this->drive->files->delete($fileId, [
-                'supportsAllDrives' => true,
-            ]);
+            $this->drive->files->delete($fileId, ['supportsAllDrives' => true]);
             return true;
-        } catch (\Exception $e) {
-            Log::error('Erro ao deletar arquivo do Google Drive: ' . $e->getMessage());
+        } catch (Exception) {
             return false;
         }
     }
 
-    /**
-     * Cria (ou recupera) uma pasta pelo nome dentro de um parentId
-     */
     public function getOrCreateFolder(string $folderName, ?string $parentId = null): string
     {
         $query = "mimeType='application/vnd.google-apps.folder' and name='$folderName' and trashed=false";
@@ -88,7 +87,6 @@ class GoogleDriveService
             return $response->files[0]->id;
         }
 
-        // Criar nova pasta
         $folderMetadata = new DriveFile([
             'name' => $folderName,
             'mimeType' => 'application/vnd.google-apps.folder',
@@ -106,9 +104,8 @@ class GoogleDriveService
         return $folder->id;
     }
 
-    public function moveFileById(string $fileId, string $newParentId, string $name): DriveFile
+    public function moveFileById(string $fileId, string $newParentId, string $newName = null): DriveFile
     {
-        // Pega os pais atuais do arquivo
         $file = $this->drive->files->get($fileId, [
             'fields' => 'parents',
             'supportsAllDrives' => true,
@@ -116,23 +113,14 @@ class GoogleDriveService
 
         $previousParents = $file->parents ? implode(',', $file->parents) : null;
 
-        // Prepare metadata with new name
-        $fileMetadata = new DriveFile([
-            'name' => $name
+        $metadata = new DriveFile();
+        if ($newName) $metadata->setName($newName);
+
+        return $this->drive->files->update($fileId, $metadata, [
+            'addParents' => $newParentId,
+            'removeParents' => $previousParents,
+            'fields' => 'id,name,webViewLink,webContentLink,parents',
+            'supportsAllDrives' => true,
         ]);
-
-        // Move o arquivo para a nova pasta
-        $updatedFile = $this->drive->files->update(
-            $fileId,
-            $fileMetadata,
-            [
-                'addParents' => $newParentId,
-                'removeParents' => $previousParents,
-                'fields' => 'id,name,webViewLink,webContentLink,parents',
-                'supportsAllDrives' => true,
-            ]
-        );
-
-        return $updatedFile;
     }
 }
